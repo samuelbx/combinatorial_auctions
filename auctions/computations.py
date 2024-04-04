@@ -1,7 +1,10 @@
 from itertools import product, permutations
-from .utils import len_possible_bundles, item_indicator
+from .utils import len_possible_bundles, item_indicator, possible_bundles_names
 from math import prod
 import logging
+
+
+BUNDLE_NAMES = None
 
 
 def _is_admissible(attr: list[int], indicator: list[list[int]]) -> bool:
@@ -116,28 +119,31 @@ def _utility_maximizing_moves(deterministic_valuation: list[float],
   return [possible_next[i] for i in idxes]
 
 
-def _explore(V, prices, list_taken, indicator, N=1):
+def _explore(V, prices, list_taken, indicator, sig, N=1):
   if len(V) == 0:
     return 0
   
   sum = 0
   head, tail = V[0], V[1:]
   for proba, deter_v_head in head:
-    logging.debug(_indent(f'Agent {0} chooses valuation {deter_v_head} [proba = {proba*100:2f}%]', N))
+    logging.debug(_indent(f'Agent {sig[N-1]+1} chooses valuation {deter_v_head} [proba = {proba*100:2f}%]', N))
     if prices is not None:
       possible_next = _utility_maximizing_moves(deter_v_head, prices, list_taken, indicator)
     else:
       possible_next = _possible_next_moves(list_taken, indicator)
     
-    maxval = 0
+    extrval = 1e12 if prices is not None else 0
     for move in possible_next:
       list_taken_next = _update_list_taken(list_taken, move, indicator, inplace=False)
       welfare_move = deter_v_head[move]
-      logging.debug(_indent(f'* Buying {move} adds welfare {welfare_move}', N))
-      welfare_next = _explore(tail, prices, list_taken_next, indicator, N+1)
+      logging.debug(_indent(f'* {sig[N-1]+1} buys {BUNDLE_NAMES[move]}, added_welfare = {welfare_move}', N))
+      welfare_next = _explore(tail, prices, list_taken_next, indicator, sig, N+1)
       welfare_branch = welfare_move + welfare_next
-      maxval = max(welfare_branch, maxval)
-    sum += maxval * proba
+      extrval = min(welfare_branch, extrval) if prices is not None else max(welfare_branch, extrval)
+
+      # EXPLANATION: if there are posted prices, agent has the choice & may provoke the worst-case scenario
+      # if generic algorithm, we can choose the best option!
+    sum += extrval * proba
   
   return sum
 
@@ -148,33 +154,40 @@ def _compute_alg(valuations, prices: list[float],
   logging.debug(f'Computing ALG:')
   if not order_oblivious:
     list_taken = [False] * len(indicator)
-    return _explore(valuations, prices, list_taken, indicator)
+    return _explore(valuations, prices, list_taken, indicator, tuple(range(len_agents)))
   else:
     vals, perms = [], list(permutations(range(len_agents)))
     for perm in perms:
+      logging.debug(_indent(f'Testing order {perm}:', 1))
       list_taken = [False] * len(indicator)
-      val = _explore([valuations[i] for i in perm], prices, list_taken, indicator)
+      val = _explore([valuations[i] for i in perm], prices, list_taken, indicator, perm)
       vals.append(val)
     worst_case_val = min(vals)
     worst_case_perm = perms[vals.index(worst_case_val)]
-    logging.debug(f'ALG = {worst_case_val} [worst-case order {worst_case_perm}]')
+    order_text = '→'.join([str(i+1) for i in worst_case_perm])
+    logging.debug(f'ALG = {worst_case_val} [worst-case order {order_text}]')
     return worst_case_val
 
 
 def _indent(str, l):
-  return 2 * l * ' ' + str
+  return l * '| ' + str
 
 
 def solve(valuations: list[tuple[float, list[float]]],
           len_items: int,
           prices: list[float],
           order_oblivious: bool,
-          debug: bool = False):
+          debug: bool = False,
+          silent: bool = False):
+  
+  global BUNDLE_NAMES
+  BUNDLE_NAMES = possible_bundles_names(len_items)
 
-  if debug:
-    logging.basicConfig(level=logging.DEBUG)
-  else:
-    logging.basicConfig(level=logging.INFO)
+  if not silent:
+    if debug:
+      logging.basicConfig(level=logging.DEBUG)
+    else:
+      logging.basicConfig(level=logging.INFO)
 
   price_status = 'posted prices' if prices is not None else 'no posted prices'
   order_oblivious_status = 'order-oblivious' if order_oblivious else 'fixed order'
