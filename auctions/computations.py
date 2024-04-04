@@ -7,36 +7,19 @@ import logging
 BUNDLE_NAMES = None
 
 
-def _is_admissible(attr: list[int], indicator: list[list[int]]) -> bool:
-  len_items = len(indicator)
-  count_items = [0] * len_items
-  for attr_i in attr:
-    for j in range(len_items):
-      if attr_i in indicator[j]:
-        count_items[j] += 1
-  for count in count_items:
-    if count > 1:
-      return False
-  return True
-
-
-def _compute_possible_attr(indicator: list[list[int]], len_players: int) -> list[list[int]]:
-  len_items = len(indicator)
-  len_bundles = len_possible_bundles(len_items)
-  all_attr = product(*[list(range(len_bundles))]*len_players)
-  possible_attr = []
-  for attr in all_attr:
-    if _is_admissible(attr, indicator):
-      possible_attr.append(attr)
-  return possible_attr
-
-
-def _compute_welfare(deterministic_valuations: list[float],
-                     attr: list[int]) -> float:
-  welfare = 0
-  for i, attr_i in enumerate(attr):
-    welfare += deterministic_valuations[i][attr_i]
-  return welfare
+def _possible_next_moves(list_taken: list[bool], 
+                         indicator: list[list[int]]) -> list[int]:
+  impossible_next = set()
+  for item, taken in enumerate(list_taken):
+    if taken:
+      for j in indicator[item]:
+        impossible_next.add(j)
+  len_bundles = max([max(l) for l in indicator]) + 1
+  possible_next = []
+  for i in range(len_bundles):
+    if not i in impossible_next:
+      possible_next.append(i)
+  return possible_next
 
 
 def _compute_price(prices: list[float], attr: int,
@@ -46,43 +29,6 @@ def _compute_price(prices: list[float], attr: int,
     if attr in indicator[i]:
       total_price += p
   return total_price
-
-
-def _compute_opt_v(deterministic_valuations: list[float],
-                   indicator: list[list[int]]) -> tuple[list[int], float]:
-  possible_attr = _compute_possible_attr(indicator, len(deterministic_valuations))
-  possible_vals = [_compute_welfare(deterministic_valuations, attr) for attr in possible_attr]
-  opt_val = max(possible_vals)
-  opt_attr = possible_attr[possible_vals.index(opt_val)]
-  return opt_attr, opt_val
-
-
-def _compute_opt(valuations: list[tuple[float, list[float]]], indicator: list[list[int]]) -> float:
-  logging.debug(f'Computing OPT:')
-  total_expected_val = 0
-  sample_space = product(*[list(range(len(v))) for v in valuations])
-  for possibility in sample_space:
-    probability = prod(valuation[possibility[i]][0] for i, valuation in enumerate(valuations))
-    logging.debug(f'  Sample space {possibility} [p = {100*probability:2f}%]:')
-    deterministic_valuations = [valuation[possibility[i]][1] for i, valuation in enumerate(valuations)]
-    attr, welfare = _compute_opt_v(deterministic_valuations, indicator)
-    logging.debug(f'  OPT = {welfare} [attribution = {attr}]')
-    total_expected_val += probability * welfare
-  return total_expected_val
-
-
-def _possible_next_moves(list_taken: list[bool], 
-                         indicator: list[list[int]]) -> list[int]:
-  impossible_next = []
-  for item, taken in enumerate(list_taken):
-    if taken:
-      impossible_next.extend(indicator[item])
-  len_bundles = max([max(l) for l in indicator]) + 1
-  possible_next = []
-  for i in range(len_bundles):
-    if not i in impossible_next:
-      possible_next.append(i)
-  return possible_next
 
 
 def _player_utility_of_move(deterministic_valuation: list[float],
@@ -119,7 +65,44 @@ def _utility_maximizing_moves(deterministic_valuation: list[float],
   return [possible_next[i] for i in idxes]
 
 
-def _explore(V, prices, list_taken, indicator, sig, N=1):
+def _explore_opt(determ_V, list_taken, indicator):
+  if len(determ_V) == 0:
+    return [], 0
+  
+  deter_v_head, deter_tail = determ_V[0], determ_V[1:]
+  possible_next = _possible_next_moves(list_taken, indicator)
+  
+  welfares, next_attrs = [], []
+  for move in possible_next:
+    list_taken_next = _update_list_taken(list_taken, move, indicator, inplace=False)
+    welfare_move = deter_v_head[move]
+    attr_next, welfare_next = _explore_opt(deter_tail, list_taken_next, indicator)
+    welfares.append(welfare_move + welfare_next)
+    next_attrs.append(attr_next)
+
+  welfare_opt = max(welfares)
+  idx = welfares.index(welfare_opt)
+  attr_opt = next_attrs[idx]
+
+  return [possible_next[idx]] + attr_opt, welfare_opt
+
+
+def _compute_opt(valuations: list[tuple[float, list[float]]], indicator: list[list[int]]) -> float:
+  logging.debug(f'Computing OPT:')
+  total_expected_val = 0
+  sample_space = product(*[list(range(len(v))) for v in valuations])
+  for possibility in sample_space:
+    probability = prod(valuation[possibility[i]][0] for i, valuation in enumerate(valuations))
+    logging.debug(f'  Sample space {possibility} [p = {100*probability:2f}%]:')
+    deterministic_valuations = [valuation[possibility[i]][1] for i, valuation in enumerate(valuations)]
+    attr, welfare = _explore_opt(deterministic_valuations, [False] * len(indicator), indicator)
+    attr_text = '(' + ', '.join([BUNDLE_NAMES[j] for j in attr]) + ')'
+    logging.debug(f'  OPT = {welfare} [attribution = {attr_text}]')
+    total_expected_val += probability * welfare
+  return total_expected_val
+
+
+def _explore_alg(V, prices, list_taken, indicator, sig, N=1):
   if len(V) == 0:
     return 0
   
@@ -137,7 +120,7 @@ def _explore(V, prices, list_taken, indicator, sig, N=1):
       list_taken_next = _update_list_taken(list_taken, move, indicator, inplace=False)
       welfare_move = deter_v_head[move]
       logging.debug(_indent(f'* {sig[N-1]+1} buys {BUNDLE_NAMES[move]}, added_welfare = {welfare_move}', N))
-      welfare_next = _explore(tail, prices, list_taken_next, indicator, sig, N+1)
+      welfare_next = _explore_alg(tail, prices, list_taken_next, indicator, sig, N+1)
       welfare_branch = welfare_move + welfare_next
       extrval = min(welfare_branch, extrval) if prices is not None else max(welfare_branch, extrval)
 
@@ -154,13 +137,14 @@ def _compute_alg(valuations, prices: list[float],
   logging.debug(f'Computing ALG:')
   if not order_oblivious:
     list_taken = [False] * len(indicator)
-    return _explore(valuations, prices, list_taken, indicator, tuple(range(len_agents)))
+    return _explore_alg(valuations, prices, list_taken, indicator, tuple(range(len_agents)))
   else:
     vals, perms = [], list(permutations(range(len_agents)))
     for perm in perms:
-      logging.debug(_indent(f'Testing order {perm}:', 1))
+      order_text = '→'.join([str(i+1) for i in perm])
+      logging.debug(_indent(f'Testing order {order_text}:', 1))
       list_taken = [False] * len(indicator)
-      val = _explore([valuations[i] for i in perm], prices, list_taken, indicator, perm)
+      val = _explore_alg([valuations[i] for i in perm], prices, list_taken, indicator, perm)
       vals.append(val)
     worst_case_val = min(vals)
     worst_case_perm = perms[vals.index(worst_case_val)]

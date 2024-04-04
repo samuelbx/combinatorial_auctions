@@ -9,11 +9,10 @@ def counter_ex(alpha, eps=1e-9):
 
   solve(valuations = [v1, v2, v3, v4],
         len_items = 3,
-        prices = [0.01, 0.01, 0.01],
-        order_oblivious = True)
+        prices = [0.01, 0.02, 0.03],
+        order_oblivious = True,
+        debug = True)
 
 print(':: alpha = 2')
 counter_ex(2)
-
-print('\n:: alpha -> +inf')
-counter_ex(1e6)
+# not very interesting
