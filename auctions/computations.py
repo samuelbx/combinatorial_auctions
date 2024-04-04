@@ -183,3 +183,8 @@ def solve(valuations: list[tuple[float, list[float]]],
   opt_val = _compute_opt(valuations, indicator)
   alg_val = _compute_alg(valuations, prices, order_oblivious, indicator)
   logging.info(f'ALG(p) = {alg_val:2f}, OPT = {opt_val:2f} [ratio = {alg_val/opt_val*100:2f}%]')
+
+  if opt_val == 0:
+    return 1
+  else:
+    return alg_val/opt_val
