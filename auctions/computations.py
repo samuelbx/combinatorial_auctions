@@ -1,10 +1,11 @@
 from itertools import product, permutations
-from .utils import len_possible_bundles, item_indicator, possible_bundles_names
+from .utils import item_indicator, possible_bundles_names
 from math import prod
 import logging
 
 
 BUNDLE_NAMES = None
+PRICE_CACHE = []
 
 
 def _possible_next_moves(list_taken: list[bool], 
@@ -14,7 +15,7 @@ def _possible_next_moves(list_taken: list[bool],
     if taken:
       for j in indicator[item]:
         impossible_next.add(j)
-  len_bundles = max([max(l) for l in indicator]) + 1
+  len_bundles = len(BUNDLE_NAMES)
   possible_next = []
   for i in range(len_bundles):
     if not i in impossible_next:
@@ -22,8 +23,8 @@ def _possible_next_moves(list_taken: list[bool],
   return possible_next
 
 
-def _compute_price(prices: list[float], attr: int,
-                   indicator: list[list[int]]) -> float:
+def _compute_price_first(prices: list[float], attr: int,
+                         indicator: list[list[int]]) -> float:
   total_price = 0
   for i, p in enumerate(prices):
     if attr in indicator[i]:
@@ -31,9 +32,9 @@ def _compute_price(prices: list[float], attr: int,
   return total_price
 
 
-def _player_utility_of_move(deterministic_valuation: list[float],
-                     prices: list[float], move: int, indicator: list[list[int]]) -> float:
-  return deterministic_valuation[move] - _compute_price(prices, move, indicator)
+def _player_utility_of_move(deterministic_valuation: list[float], move: int) -> float:
+  assert len(PRICE_CACHE) > 0
+  return deterministic_valuation[move] - PRICE_CACHE[move]
 
 
 def _indices_of(lst, value):
@@ -53,12 +54,11 @@ def _update_list_taken(list_taken: list[bool], move: int,
 
 
 def _utility_maximizing_moves(deterministic_valuation: list[float],
-                          prices: list[float],
-                          list_taken: list[bool], indicator: list[list[int]]) -> tuple[int, float]:
+                              list_taken: list[bool], indicator: list[list[int]]) -> tuple[int, float]:
   possible_next = _possible_next_moves(list_taken, indicator)
   player_utilities = []
   for move in possible_next:
-    player_utility = _player_utility_of_move(deterministic_valuation, prices, move, indicator)
+    player_utility = _player_utility_of_move(deterministic_valuation, move)
     player_utilities.append(player_utility)
   best_player_utility = max(player_utilities)
   idxes = _indices_of(player_utilities, best_player_utility)
@@ -111,7 +111,7 @@ def _explore_alg(V, prices, list_taken, indicator, sig, N=1):
   for proba, deter_v_head in head:
     logging.debug(_indent(f'Agent {sig[N-1]+1} chooses valuation {deter_v_head} [proba = {proba*100:2f}%]', N))
     if prices is not None:
-      possible_next = _utility_maximizing_moves(deter_v_head, prices, list_taken, indicator)
+      possible_next = _utility_maximizing_moves(deter_v_head, list_taken, indicator)
     else:
       possible_next = _possible_next_moves(list_taken, indicator)
     
@@ -164,7 +164,7 @@ def solve(valuations: list[tuple[float, list[float]]],
           debug: bool = False,
           silent: bool = False):
   
-  global BUNDLE_NAMES
+  global BUNDLE_NAMES, PRICE_CACHE
   BUNDLE_NAMES = possible_bundles_names(len_items)
 
   if not silent:
@@ -177,6 +177,12 @@ def solve(valuations: list[tuple[float, list[float]]],
   order_oblivious_status = 'order-oblivious' if order_oblivious else 'fixed order'
   logging.info(f'{len(valuations)} agents, {len_items} items, {price_status}, {order_oblivious_status}')
   indicator = item_indicator(len_items)
+  if prices is not None:
+    PRICE_CACHE = []
+    len_bundles = len(BUNDLE_NAMES)
+    for b in range(len_bundles):
+      PRICE_CACHE.append(_compute_price_first(prices, b, indicator))
+  
   opt_val = _compute_opt(valuations, indicator)
   alg_val = _compute_alg(valuations, prices, order_oblivious, indicator)
   logging.info(f'ALG(p) = {alg_val:2f}, OPT = {opt_val:2f} [ratio = {alg_val/opt_val*100:2f}%]')

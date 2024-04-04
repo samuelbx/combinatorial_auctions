@@ -19,10 +19,6 @@ def possible_bundles_names(M: int) -> list[str]:
   return bundle_names
 
 
-def len_possible_bundles(M: int) -> int:
-  return len(list(possible_bundles(M)))
-
-
 def item_indicator(M: int) -> list[list[int]]:
   bundles = list(possible_bundles(M))
   indicator = [[] for _ in range(M)]
