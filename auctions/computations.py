@@ -165,6 +165,9 @@ def solve(valuations: list[tuple[float, list[float]]],
           order_oblivious: bool,
           debug: bool = False,
           silent: bool = False):
+  for i, val in enumerate(valuations):
+    condition = abs(sum([prob for prob, _ in val]) - 1) < 1e-12
+    assert condition, f'v{i+1}\'s probabilities should sum to 1'
   
   global BUNDLE_NAMES, PRICE_CACHE
   BUNDLE_NAMES = possible_bundles_names(len_items)
