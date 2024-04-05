@@ -91,6 +91,7 @@ def _compute_opt(valuations: list[tuple[float, list[float]]], indicator: list[li
   logging.debug(f'Computing OPT:')
   total_expected_val = 0
   sample_space = product(*[list(range(len(v))) for v in valuations])
+  possible_attributions = []
   for possibility in sample_space:
     probability = prod(valuation[possibility[i]][0] for i, valuation in enumerate(valuations))
     logging.debug(f'  Sample space {possibility} [p = {100*probability:2f}%]:')
@@ -98,8 +99,9 @@ def _compute_opt(valuations: list[tuple[float, list[float]]], indicator: list[li
     attr, welfare = _explore_opt(deterministic_valuations, [False] * len(indicator), indicator)
     attr_text = '(' + ', '.join([BUNDLE_NAMES[j] for j in attr]) + ')'
     logging.debug(f'  OPT = {welfare} [attribution = {attr_text}]')
+    possible_attributions.append((probability, attr))
     total_expected_val += probability * welfare
-  return total_expected_val
+  return total_expected_val, possible_attributions
 
 
 def _explore_alg(V, prices, list_taken, indicator, sig, N=1):
@@ -183,7 +185,7 @@ def solve(valuations: list[tuple[float, list[float]]],
     for b in range(len_bundles):
       PRICE_CACHE.append(_compute_price_first(prices, b, indicator))
   
-  opt_val = _compute_opt(valuations, indicator)
+  opt_val, possible_attr = _compute_opt(valuations, indicator)
   alg_val = _compute_alg(valuations, prices, order_oblivious, indicator)
   logging.info(f'ALG(p) = {alg_val:2f}, OPT = {opt_val:2f} [ratio = {alg_val/opt_val*100:2f}%]')
 
