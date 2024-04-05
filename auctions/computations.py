@@ -6,7 +6,8 @@ import logging
 
 BUNDLE_NAMES = None
 PRICE_CACHE = []
-
+OPT_CACHE = None
+VALUATIONS_CACHE = None
 
 def _possible_next_moves(list_taken: list[bool], 
                          indicator: list[list[int]]) -> list[int]:
@@ -169,7 +170,7 @@ def solve(valuations: list[tuple[float, list[float]]],
     condition = abs(sum([prob for prob, _ in val]) - 1) < 1e-12
     assert condition, f'v{i+1}\'s probabilities should sum to 1'
   
-  global BUNDLE_NAMES, PRICE_CACHE
+  global BUNDLE_NAMES, PRICE_CACHE, VALUATIONS_CACHE, OPT_CACHE
   BUNDLE_NAMES = possible_bundles_names(len_items)
 
   if not silent:
@@ -188,7 +189,10 @@ def solve(valuations: list[tuple[float, list[float]]],
     for b in range(len_bundles):
       PRICE_CACHE.append(_compute_price_first(prices, b, indicator))
   
-  opt_val, possible_attr = _compute_opt(valuations, indicator)
+  if VALUATIONS_CACHE != valuations:
+    OPT_CACHE = _compute_opt(valuations, indicator)
+  opt_val, possible_attr = OPT_CACHE
+
   alg_val = _compute_alg(valuations, prices, order_oblivious, indicator)
   logging.info(f'ALG(p) = {alg_val:2f}, OPT = {opt_val:2f} [ratio = {alg_val/opt_val*100:2f}%]')
 
@@ -203,5 +207,7 @@ def solve(valuations: list[tuple[float, list[float]]],
     "opt_val": opt_val,
     "score": score
   }
+
+  VALUATIONS_CACHE = valuations.copy()
   
   return return_dict
