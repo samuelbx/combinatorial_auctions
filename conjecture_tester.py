@@ -12,8 +12,7 @@ if not rnd:
   mm = 3
   VV = [v1, v2, v3]
 else:
-  len_players = 4
-  mm = 4
+  len_players, mm = 4, 4
   VV = gen_rand_xos(len_players, mm)
 
 for i, vi in enumerate(VV):
