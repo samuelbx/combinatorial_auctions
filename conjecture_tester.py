@@ -1,6 +1,5 @@
 from auctions.computations import solve
 from auctions.valuation_classes import gen_xos, gen_rand_xos
-import numpy as np
 from tqdm import tqdm
 from itertools import product
 
@@ -16,7 +15,7 @@ else:
   VV = gen_rand_xos(len_players, mm)
 
 for i, vi in enumerate(VV):
-  print(f'v{str(i+1)}', np.round(vi[0][1], 3))
+  print(f'v{str(i+1)}', vi[0][1])
 
 def grid_gen(m, M, N, mm):
   grid = []
