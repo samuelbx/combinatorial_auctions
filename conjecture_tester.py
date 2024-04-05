@@ -1,36 +1,39 @@
 from auctions.computations import solve
-from auctions.valuation_classes import gen_xos
-from random import random
+from auctions.valuation_classes import gen_xos, gen_rand_xos
 import numpy as np
+from tqdm import tqdm
+from itertools import product
 
 rnd = True
 if not rnd:
   v1 = [(1, gen_xos([(1,0,0), (0,1,0)]))]
   v2 = [(1, gen_xos([(0,1,0), (0,0,1)]))]
   v3 = [(1, gen_xos([(0,0,1), (1,0,0)]))]
+  mm = 3
+  VV = [v1, v2, v3]
 else:
-  v1 = [(1, gen_xos([(random(), random(), random()), (random(), random(), random())]))]
-  v2 = [(1, gen_xos([(random(), random(), random()), (random(), random(), random())]))]
-  v3 = [(1, gen_xos([(random(), random(), random()), (random(), random(), random())]))]
+  len_players = 4
+  mm = 4
+  VV = gen_rand_xos(len_players, mm)
 
-print('v1', np.round(v1[0][1], 3))
-print('v2', np.round(v2[0][1], 3))
-print('v3', np.round(v3[0][1], 3))
+for i, vi in enumerate(VV):
+  print(f'v{str(i+1)}', np.round(vi[0][1], 3))
 
-def grid_gen(m1, M1, m2, M2, m3, M3, N):
+def grid_gen(m, M, N, mm):
   grid = []
-  for i in range(N+1):
-    for j in range(N+1):
-      for k in range(N+1):
-        #if not (i==0 and j==0 and k==0):
-        grid.append([m1+(M1-m1)*i/N, m2+(M2-m2)*j/N, m3+(M3-m3)*k/N])
+  indices = product(*[list(range(N+1)) for _ in range(mm)])
+  for idxes in indices:
+    elem = []
+    for i in idxes:
+      elem.append(m+(M-m)*i/N)
+    grid.append(elem)
   return grid
 
-prices_grid = grid_gen(0, 1, 0, 1, 0, 1, 20)
+prices_grid = grid_gen(0, 1, 10, mm)
 scores, prices = [], []
-for price in prices_grid:
-  score = solve(valuations = [v1, v2, v3],
-                len_items = 3,
+for price in tqdm(prices_grid):
+  score = solve(valuations = VV,
+                len_items = mm,
                 prices = price,
                 order_oblivious = True,
                 silent = True)["score"]
