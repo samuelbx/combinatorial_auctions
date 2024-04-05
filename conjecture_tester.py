@@ -33,7 +33,7 @@ for price in prices_grid:
                 len_items = 3,
                 prices = price,
                 order_oblivious = True,
-                silent = True)
+                silent = True)["score"]
   if score >= 2/3 - 1e-9:
     scores.append(score)
     prices.append(price)

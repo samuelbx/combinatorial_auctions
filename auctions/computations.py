@@ -190,6 +190,15 @@ def solve(valuations: list[tuple[float, list[float]]],
   logging.info(f'ALG(p) = {alg_val:2f}, OPT = {opt_val:2f} [ratio = {alg_val/opt_val*100:2f}%]')
 
   if opt_val == 0:
-    return 1
+    score = 1
   else:
-    return alg_val/opt_val
+    score = alg_val/opt_val
+  
+  return_dict = {
+    "optimal_bundles": possible_attr,
+    "alg_val": alg_val,
+    "opt_val": opt_val,
+    "score": score
+  }
+  
+  return return_dict
