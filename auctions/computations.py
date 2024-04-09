@@ -189,8 +189,13 @@ def solve(valuations: list[tuple[float, list[float]]],
   if prices is not None:
     PRICE_CACHE = []
     len_bundles = len(BUNDLE_NAMES)
-    for b in range(len_bundles):
-      PRICE_CACHE.append(_compute_price_first(prices, b, indicator))
+    if len(prices) == len_items:
+      for b in range(len_bundles):
+        PRICE_CACHE.append(_compute_price_first(prices, b, indicator))
+    elif len(prices) == len_bundles:
+      PRICE_CACHE = prices.copy()
+    else:
+      raise ValueError("wrong size for prices array")
   
   if VALUATIONS_CACHE != valuations:
     OPT_CACHE = _compute_opt(valuations, indicator)
