@@ -186,6 +186,46 @@ def solve(valuations: list[tuple[float, list[float]]],
   order_oblivious_status = 'order-oblivious' if order_oblivious else 'fixed order'
   _log(0, f'{len(valuations)} agents, {len_items} items, {price_status}, {order_oblivious_status}')
   indicator = item_indicator(len_items)
+
+  if VALUATIONS_CACHE != valuations:
+    OPT_CACHE = _compute_opt(valuations, indicator)
+  opt_val, possible_attr = OPT_CACHE
+
+  if prices == 'auto':
+    assert len_items == 2, "auto pricing only implemented for 2 items"
+    # Players reordering phase
+    opt_attr = possible_attr[0][1]
+    reordering = []
+    if 3 in opt_attr:
+      reordering.append(opt_attr.index(3))
+      for i in range(len(opt_attr)):
+        if i != reordering[0]:
+          reordering.append(i)
+    else:
+      idx1, idx2 = opt_attr.index(1), opt_attr.index(2)
+      reordering.append(idx1)
+      reordering.append(idx2)
+      for i, _ in enumerate(opt_attr):
+        if i != idx1 and i != idx2:
+          reordering.append(i)
+    
+    valuations = [valuations[i] for i in reordering]
+    opt_attr = [opt_attr[i] for i in reordering]
+
+    # Pricing phase
+    eps = 1e-9
+    if opt_attr[0] == 3:
+      prices = [
+        max([valuations[i][0][1][1] for i in range(1, len(valuations))]) + eps,
+        max([valuations[i][0][1][2] for i in range(1, len(valuations))]) + eps
+      ]
+    elif valuations[0][0][1][1] < valuations[1][0][1][1] and valuations[0][0][1][2] < valuations[1][0][1][2]:
+      max_next_b = max([valuations[i][0][1][2] for i in range(2, len(valuations))] + [0])
+      prices = [valuations[0][0][1][1] - eps, max(valuations[0][0][1][2], max_next_b) + eps]
+    else:
+      max_next_a = max([valuations[i][0][1][1] for i in range(2, len(valuations))] + [0])
+      prices = [max(valuations[1][0][1][1], max_next_a) + eps, valuations[1][0][1][2] - eps]
+
   if prices is not None:
     PRICE_CACHE = []
     len_bundles = len(BUNDLE_NAMES)
@@ -196,10 +236,6 @@ def solve(valuations: list[tuple[float, list[float]]],
       PRICE_CACHE = prices.copy()
     else:
       raise ValueError("wrong size for prices array")
-  
-  if VALUATIONS_CACHE != valuations:
-    OPT_CACHE = _compute_opt(valuations, indicator)
-  opt_val, possible_attr = OPT_CACHE
 
   alg_val = _compute_alg(valuations, prices, order_oblivious, indicator)
   _log(0, f'ALG(p) = {alg_val:2f}, OPT = {opt_val:2f} [ratio = {alg_val/opt_val*100:2f}%]')
