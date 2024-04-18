@@ -45,7 +45,6 @@ for price in tqdm(prices_grid):
                 prices = price,
                 order_oblivious = True,
                 silent = True)["score"]
-  print(price, score)
   if score >= 2/3 - 1e-9:
     scores.append(score)
     prices.append(price)

@@ -1,12 +1,11 @@
 from auctions.computations import solve
 from auctions.valuation_classes import gen_rand_xos
-from tqdm import tqdm
 from itertools import product
 
 rnd = True
 if not rnd:
-  v1 = [(1, [0, .798, .994, 1.575])]
-  v2 = [(1, [0, .624, .334, .958])]
+  v1 = [(1, [0, 1, 1, 2])]
+  v2 = [(1, [0, 1, 1, 1])]
   mm = 2
   VV = [v1, v2]
 else:
