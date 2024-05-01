@@ -55,7 +55,7 @@ def _update_list_taken(list_taken: list[bool], move: int,
 
 
 def _utility_maximizing_moves(deterministic_valuation: list[float],
-                              list_taken: list[bool], indicator: list[list[int]], tol:float=1e-12) -> tuple[int, float]:
+                              list_taken: list[bool], indicator: list[list[int]], tol: float=1e-12) -> tuple[int, float]:
   possible_next = _possible_next_moves(list_taken, indicator)
   max_utility = 0
   utility_maximizing_next = []
@@ -64,7 +64,7 @@ def _utility_maximizing_moves(deterministic_valuation: list[float],
     if player_utility > max_utility:
       utility_maximizing_next = [move]
       max_utility = player_utility
-    elif abs(player_utility - max_utility)<tol:
+    elif abs(player_utility - max_utility) < tol:
       utility_maximizing_next.append(move)
   return utility_maximizing_next
 
