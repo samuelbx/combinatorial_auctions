@@ -55,7 +55,7 @@ def _update_list_taken(list_taken: list[bool], move: int,
 
 
 def _utility_maximizing_moves(deterministic_valuation: list[float],
-                              list_taken: list[bool], indicator: list[list[int]]) -> tuple[int, float]:
+                              list_taken: list[bool], indicator: list[list[int]], tol:float=1e-12) -> tuple[int, float]:
   possible_next = _possible_next_moves(list_taken, indicator)
   max_utility = 0
   utility_maximizing_next = []
@@ -64,7 +64,7 @@ def _utility_maximizing_moves(deterministic_valuation: list[float],
     if player_utility > max_utility:
       utility_maximizing_next = [move]
       max_utility = player_utility
-    elif player_utility == max_utility:
+    elif abs(player_utility - max_utility)<tol:
       utility_maximizing_next.append(move)
   return utility_maximizing_next
 
@@ -216,8 +216,8 @@ def solve(valuations: list[tuple[float, list[float]]],
     eps = 1e-9
     if opt_attr[0] == 3:
       prices = [
-        max([valuations[i][0][1][1] for i in range(1, len(valuations))]) + eps,
-        max([valuations[i][0][1][2] for i in range(1, len(valuations))]) + eps
+        valuations[0][0][1][3] - valuations[0][0][1][2] - eps,
+        valuations[0][0][1][3] - valuations[0][0][1][1] - eps
       ]
     elif valuations[0][0][1][1] < valuations[1][0][1][1] and valuations[0][0][1][2] < valuations[1][0][1][2]:
       max_next_b = max([valuations[i][0][1][2] for i in range(2, len(valuations))] + [0])
@@ -225,6 +225,8 @@ def solve(valuations: list[tuple[float, list[float]]],
     else:
       max_next_a = max([valuations[i][0][1][1] for i in range(2, len(valuations))] + [0])
       prices = [max(valuations[1][0][1][1], max_next_a) + eps, valuations[1][0][1][2] - eps]
+    
+    _log(0, f'Automatic prices {prices}')
 
   if prices is not None:
     PRICE_CACHE = []
@@ -249,7 +251,8 @@ def solve(valuations: list[tuple[float, list[float]]],
     "optimal_bundles": possible_attr,
     "alg_val": alg_val,
     "opt_val": opt_val,
-    "score": score
+    "score": score,
+    "prices": prices
   }
 
   VALUATIONS_CACHE = valuations.copy()
