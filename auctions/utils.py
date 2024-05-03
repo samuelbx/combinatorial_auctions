@@ -1,4 +1,4 @@
-from itertools import combinations
+from itertools import combinations, product
 
 
 def possible_bundles(M: int):
@@ -26,3 +26,26 @@ def item_indicator(M: int) -> list[list[int]]:
     for item in bundle:
       indicator[item].append(i)
   return indicator
+
+
+def grid_gen(m, M, N, mm):
+  grid = []
+  indices = product(*[list(range(N+1)) for _ in range(mm)])
+  for idxes in indices:
+    elem = []
+    for i in idxes:
+      elem.append(m+(M-m)*i/N)
+    grid.append(elem)
+  return grid
+
+
+def thres_grid_gen(V, mm, eps=1e-9):
+  lists = []
+  for j in range(1, mm+1):
+    sublist = []
+    for vi in V:
+      if vi[0][1][j] - eps >= 0:
+        sublist.append(vi[0][1][j]-eps)
+      sublist.append(vi[0][1][j]+eps)
+    lists.append(sublist)
+  return product(*lists)

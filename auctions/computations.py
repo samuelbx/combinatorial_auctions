@@ -1,6 +1,7 @@
 from itertools import product, permutations
-from .utils import item_indicator, possible_bundles_names
+from .utils import item_indicator, possible_bundles_names, grid_gen, thres_grid_gen
 from math import prod
+from tqdm import tqdm
 
 
 BUNDLE_NAMES = None
@@ -262,3 +263,36 @@ def solve(valuations: list[tuple[float, list[float]]],
   VALUATIONS_CACHE = valuations.copy()
   
   return return_dict
+
+
+def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3):
+  assert method in ['brute', 'thresholds']
+  if method == 'brute':
+    raise ValueError('not supported yet')
+    prices_grid = grid_gen(0, 1, grid_points, mm)
+  elif method == 'thresholds':
+    prices_grid = thres_grid_gen(VV, mm)
+
+  max_score = 0
+  argmax_prices = None
+  for price in tqdm(prices_grid):
+    score = solve(valuations = VV,
+                  len_items = mm,
+                  prices = price,
+                  order_oblivious = True,
+                  silent = True)["score"]
+    
+    if score > max_score:
+      max_score = score
+      argmax_prices = price
+
+    if lazy and score > lazy_thres:
+      break
+  
+  score = solve(valuations = VV,
+                len_items = mm,
+                prices = argmax_prices,
+                order_oblivious = True,
+                debug = True)["score"]
+
+  print(f'{max_score*100:2f}% score achieved with prices {argmax_prices}')
