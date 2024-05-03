@@ -42,10 +42,10 @@ def grid_gen(m, M, N, mm):
 def thres_grid_gen(V, mm, eps=1e-9):
   lists = []
   for j in range(1, mm+1):
-    sublist = []
+    sublist = set()
     for vi in V:
       if vi[0][1][j] - eps >= 0:
-        sublist.append(vi[0][1][j]-eps)
-      sublist.append(vi[0][1][j]+eps)
+        sublist.add(vi[0][1][j]-eps)
+      sublist.add(vi[0][1][j]+eps)
     lists.append(sublist)
   return product(*lists)
