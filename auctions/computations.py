@@ -182,6 +182,8 @@ def solve(valuations: list[tuple[float, list[float]]],
   global BUNDLE_NAMES, PRICE_CACHE, VALUATIONS_CACHE, OPT_CACHE, PRIORITY
   BUNDLE_NAMES = possible_bundles_names(len_items)
 
+  assert len(BUNDLE_NAMES) == len(valuations[0][0][1]), 'wrong len_items'
+
   if not silent:
     if debug:
       PRIORITY = 1
