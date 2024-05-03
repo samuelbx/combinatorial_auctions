@@ -276,6 +276,9 @@ def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3
   elif method == 'thresholds':
     prices_grid = thres_grid_gen(VV, mm)
 
+  for i, vi in enumerate(VV):
+    print(f'v{str(i+1)}', vi[0][1])
+
   max_score = 0
   argmax_prices = None
   argmax_order = None
