@@ -189,6 +189,8 @@ def solve(valuations: list[tuple[float, list[float]]],
       PRIORITY = 1
     else:
       PRIORITY = 0
+  else:
+    PRIORITY = -1
 
   price_status = 'posted prices' if prices is not None else 'no posted prices'
   order_oblivious_status = 'order-oblivious' if order_oblivious else 'fixed order'
@@ -269,22 +271,25 @@ def solve(valuations: list[tuple[float, list[float]]],
   return return_dict
 
 
-def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3):
-  global TAG
-  assert method in ['brute', 'thresholds']
+def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3, silent=False):
+  global TAG, PRIORITY
+  assert method in ['brute', 'thresholds', 'thresholds_aug']
   if method == 'brute':
-    raise ValueError('not supported yet')
-    prices_grid = grid_gen(0, 1, grid_points, mm)
+    maxval = 0
+    for V in VV:
+      for detV in V:
+        maxval = max(maxval, max(detV[1]))
+    prices_grid = grid_gen(0, maxval+.1, grid_points, mm)
   elif method == 'thresholds':
     prices_grid = thres_grid_gen(VV, mm)
-
-  for i, vi in enumerate(VV):
-    print(f'v{str(i+1)}', vi[0][1])
+  elif method == 'thresholds_aug':
+    prices_grid = thres_grid_gen(VV, mm, aug=True)
 
   max_score = 0
   argmax_prices = None
   argmax_order = None
-  for price in tqdm(prices_grid):
+  iterator = tqdm(prices_grid) if not silent else prices_grid
+  for price in iterator:
     result = solve(valuations = VV,
                    len_items = mm,
                    prices = price,
@@ -305,6 +310,12 @@ def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3
                 len_items = mm,
                 prices = argmax_prices,
                 order_oblivious = True,
-                debug = True)["score"]
+                debug = True,
+                silent = silent)["score"]
 
-  print(f'{max_score*100:2f}% score achieved with prices {argmax_prices}')
+  for i, vi in enumerate(VV):
+    _log(1, f'v{str(i+1)} {vi[0][1]}')
+  _log(1, f'{max_score*100:2f}% score achieved with prices {argmax_prices}')
+
+  PRIORITY = -1
+  return score
