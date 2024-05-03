@@ -9,10 +9,11 @@ PRICE_CACHE = []
 OPT_CACHE = None
 VALUATIONS_CACHE = None
 PRIORITY = -1
+TAG = None
 
-def _log(priority, txt, end='\n'):
+def _log(priority, txt, end='\n', tag=None):
   global PRIORITY
-  if priority <= PRIORITY:
+  if priority <= PRIORITY and (tag is None or TAG is None or tag == TAG):
     print(txt, end=end)
 
 def _possible_next_moves(list_taken: list[bool], 
@@ -117,7 +118,7 @@ def _explore_alg(V, prices, list_taken, indicator, sig, N=1):
   head, tail = V[0], V[1:]
   for proba, deter_v_head in head:
     if len(head) > 1:
-      _log(1, _indent(f'Agent {sig[N-1]+1} chooses valuation {deter_v_head} [proba = {proba*100:2f}%]', N))
+      _log(1, _indent(f'╟ Agent {sig[N-1]+1} chooses valuation {deter_v_head} [proba = {proba*100:2f}%]', N))
     if prices is not None:
       possible_next = _utility_maximizing_moves(deter_v_head, list_taken, indicator)
     else:
@@ -128,7 +129,7 @@ def _explore_alg(V, prices, list_taken, indicator, sig, N=1):
       list_taken_next = _update_list_taken(list_taken, move, indicator, inplace=False)
       welfare_move = deter_v_head[move]
       log_text = f'{sig[N-1]+1} buys {BUNDLE_NAMES[move]} ({welfare_move})'
-      _log(1, _indent(f'╟ {log_text}', N))
+      _log(1, _indent(f'╟ {log_text}', N), tag=sig)
       welfare_next = _explore_alg(tail, prices, list_taken_next, indicator, sig, N+1)
       welfare_branch = welfare_move + welfare_next
       extrval = min(welfare_branch, extrval) if prices is not None else max(welfare_branch, extrval)
@@ -136,7 +137,7 @@ def _explore_alg(V, prices, list_taken, indicator, sig, N=1):
       # EXPLANATION: if there are posted prices, agent has the choice & may provoke the worst-case scenario
       # if generic algorithm, we can choose the best option!
     if N == 1:
-      _log(1, _indent(f'╙ Total: {extrval}', N))
+      _log(1, _indent(f'╙ Total: {extrval}', N), tag=sig)
     sum += extrval * proba
   
   return sum
@@ -153,7 +154,7 @@ def _compute_alg(valuations, prices: list[float],
     vals, perms = [], list(permutations(range(len_agents)))
     for perm in perms:
       order_text = '→'.join([str(i+1) for i in perm])
-      _log(1, _indent(f'╓ Order {order_text}:', 1))
+      _log(1, _indent(f'╓ Order {order_text}:', 1), tag=perm)
       list_taken = [False] * len(indicator)
       val = _explore_alg([valuations[i] for i in perm], prices, list_taken, indicator, perm)
       vals.append(val)
@@ -161,7 +162,7 @@ def _compute_alg(valuations, prices: list[float],
     worst_case_perm = perms[vals.index(worst_case_val)]
     order_text = '→'.join([str(i+1) for i in worst_case_perm])
     _log(1, f'ALG = {worst_case_val} [worst-case order {order_text}]')
-    return worst_case_val
+    return worst_case_val, worst_case_perm
 
 
 def _indent(str, l):
@@ -244,7 +245,7 @@ def solve(valuations: list[tuple[float, list[float]]],
     else:
       raise ValueError("wrong size for prices array")
 
-  alg_val = _compute_alg(valuations, prices, order_oblivious, indicator)
+  alg_val, worst_case_perm = _compute_alg(valuations, prices, order_oblivious, indicator)
   _log(0, f'ALG(p) = {alg_val:2f}, OPT = {opt_val:2f} [ratio = {alg_val/opt_val*100:2f}%]')
 
   if opt_val == 0:
@@ -257,7 +258,8 @@ def solve(valuations: list[tuple[float, list[float]]],
     "alg_val": alg_val,
     "opt_val": opt_val,
     "score": score,
-    "prices": prices
+    "prices": prices,
+    "worst_case_order": worst_case_perm
   }
 
   VALUATIONS_CACHE = valuations.copy()
@@ -266,6 +268,7 @@ def solve(valuations: list[tuple[float, list[float]]],
 
 
 def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3):
+  global TAG
   assert method in ['brute', 'thresholds']
   if method == 'brute':
     raise ValueError('not supported yet')
@@ -275,20 +278,24 @@ def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3
 
   max_score = 0
   argmax_prices = None
+  argmax_order = None
   for price in tqdm(prices_grid):
-    score = solve(valuations = VV,
-                  len_items = mm,
-                  prices = price,
-                  order_oblivious = True,
-                  silent = True)["score"]
+    result = solve(valuations = VV,
+                   len_items = mm,
+                   prices = price,
+                   order_oblivious = True,
+                   silent = True)
+    score = result["score"]
     
     if score > max_score:
       max_score = score
       argmax_prices = price
+      argmax_order = result["worst_case_order"]
 
     if lazy and score > lazy_thres:
       break
   
+  TAG = argmax_order
   score = solve(valuations = VV,
                 len_items = mm,
                 prices = argmax_prices,
