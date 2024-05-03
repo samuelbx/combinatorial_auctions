@@ -15,4 +15,5 @@ v3 = [(1-epsilon, gen_zero(3)),
 solve(valuations = [v1, v2, v3],
       len_items = 3,
       prices = None,
-      order_oblivious = False)
+      order_oblivious = False,
+      debug = True)

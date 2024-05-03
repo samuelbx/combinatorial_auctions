@@ -9,10 +9,10 @@ OPT_CACHE = None
 VALUATIONS_CACHE = None
 PRIORITY = -1
 
-def _log(priority, txt):
+def _log(priority, txt, end='\n'):
   global PRIORITY
   if priority <= PRIORITY:
-    print(txt)
+    print(txt, end=end)
 
 def _possible_next_moves(list_taken: list[bool], 
                          indicator: list[list[int]]) -> list[int]:
@@ -115,7 +115,8 @@ def _explore_alg(V, prices, list_taken, indicator, sig, N=1):
   sum = 0
   head, tail = V[0], V[1:]
   for proba, deter_v_head in head:
-    _log(1, _indent(f'Agent {sig[N-1]+1} chooses valuation {deter_v_head} [proba = {proba*100:2f}%]', N))
+    if len(head) > 1:
+      _log(1, _indent(f'Agent {sig[N-1]+1} chooses valuation {deter_v_head} [proba = {proba*100:2f}%]', N))
     if prices is not None:
       possible_next = _utility_maximizing_moves(deter_v_head, list_taken, indicator)
     else:
@@ -125,13 +126,16 @@ def _explore_alg(V, prices, list_taken, indicator, sig, N=1):
     for move in possible_next:
       list_taken_next = _update_list_taken(list_taken, move, indicator, inplace=False)
       welfare_move = deter_v_head[move]
-      _log(1, _indent(f'* {sig[N-1]+1} buys {BUNDLE_NAMES[move]}, added_welfare = {welfare_move}', N))
+      log_text = f'{sig[N-1]+1} buys {BUNDLE_NAMES[move]} ({welfare_move})'
+      _log(1, _indent(f'╟ {log_text}', N))
       welfare_next = _explore_alg(tail, prices, list_taken_next, indicator, sig, N+1)
       welfare_branch = welfare_move + welfare_next
       extrval = min(welfare_branch, extrval) if prices is not None else max(welfare_branch, extrval)
 
       # EXPLANATION: if there are posted prices, agent has the choice & may provoke the worst-case scenario
       # if generic algorithm, we can choose the best option!
+    if N == 1:
+      _log(1, _indent(f'╙ Total: {extrval}', N))
     sum += extrval * proba
   
   return sum
@@ -148,7 +152,7 @@ def _compute_alg(valuations, prices: list[float],
     vals, perms = [], list(permutations(range(len_agents)))
     for perm in perms:
       order_text = '→'.join([str(i+1) for i in perm])
-      _log(1, _indent(f'Testing order {order_text}:', 1))
+      _log(1, _indent(f'╓ Order {order_text}:', 1))
       list_taken = [False] * len(indicator)
       val = _explore_alg([valuations[i] for i in perm], prices, list_taken, indicator, perm)
       vals.append(val)
@@ -160,7 +164,7 @@ def _compute_alg(valuations, prices: list[float],
 
 
 def _indent(str, l):
-  return l * '| ' + str
+  return (l-1) * '║ ' + str
 
 
 def solve(valuations: list[tuple[float, list[float]]],
