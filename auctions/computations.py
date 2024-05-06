@@ -199,7 +199,11 @@ def solve(valuations: list[tuple[float, list[float]]],
 
   if VALUATIONS_CACHE != valuations:
     OPT_CACHE = _compute_opt(valuations, indicator)
+  else:
+    attr_text = '(' + ', '.join([BUNDLE_NAMES[j] for j in OPT_CACHE[1][0][1]]) + ')'
+    _log(0, f'Optimal allocation: {attr_text}')
   opt_val, possible_attr = OPT_CACHE
+
 
   if prices == 'auto':
     assert len_items == 2, "auto pricing only implemented for 2 items"
