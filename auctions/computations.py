@@ -253,7 +253,11 @@ def solve(valuations: list[tuple[float, list[float]]],
     else:
       raise ValueError("wrong size for prices array")
 
-  alg_val, worst_case_perm = _compute_alg(valuations, prices, order_oblivious, indicator)
+  alg_res = _compute_alg(valuations, prices, order_oblivious, indicator)
+  if type(alg_res) == float:
+    alg_val, worst_case_perm = alg_res, None
+  else:
+    alg_val, worst_case_perm = alg_res
   _log(0, f'ALG(p) = {alg_val:2f}, OPT = {opt_val:2f} [ratio = {alg_val/opt_val*100:2f}%]')
 
   if opt_val == 0:
