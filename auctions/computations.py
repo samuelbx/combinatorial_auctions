@@ -2,6 +2,7 @@ from itertools import product, permutations
 from .utils import item_indicator, possible_bundles_names, grid_gen, thres_grid_gen
 from math import prod
 from tqdm import tqdm
+import types
 
 
 BUNDLE_NAMES = None
@@ -281,7 +282,7 @@ def solve(valuations: list[tuple[float, list[float]]],
 
 def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3, silent=False):
   global TAG, PRIORITY
-  assert method in ['brute', 'thresholds', 'thresholds_aug']
+  assert method in ['brute', 'thresholds', 'thresholds_aug'] or isinstance(method, types.GeneratorType)
   if method == 'brute':
     maxval = 0
     for V in VV:
@@ -292,6 +293,8 @@ def search_prices(VV, mm, method, lazy = False, grid_points = 50, lazy_thres=2/3
     prices_grid = thres_grid_gen(VV, mm)
   elif method == 'thresholds_aug':
     prices_grid = thres_grid_gen(VV, mm, aug=True)
+  elif isinstance(method, types.GeneratorType):
+    prices_grid = method
 
   max_score = 0
   argmax_prices = None
